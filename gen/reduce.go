@@ -103,7 +103,7 @@ func (g *Generator) reduceDefault(ops []*openapi.Operation) error {
 
 	hasJSON := false
 	for _, media := range resp.Contents {
-		if media.Encoding.JSON() {
+		if media.Encoding.JSON() || media.Encoding.ProblemJSON() {
 			hasJSON = true
 			break
 		}

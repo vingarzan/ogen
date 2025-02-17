@@ -1,6 +1,9 @@
 package gen
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/go-faster/errors"
 	"github.com/ogen-go/ogen/gen/ir"
 	"github.com/ogen-go/ogen/jsonschema"
@@ -91,7 +94,26 @@ func (s *tstorage) saveRef(ref jsonschema.Ref, e ir.Encoding, t *ir.Type) error 
 		return errors.Errorf("reference conflict: %q", key)
 	}
 	if _, ok := s.types[t.Name]; ok {
-		return errors.Errorf("reference %q type name conflict: %q", key, t.Name)
+		// Try to rename the type, with a suffix. Usage should be by reference, so hopefully this won't be an issue.
+		oldName := t.Name
+		wasRenamed := false
+		for i := 0; i < 1000; i++ {
+			t.Name = fmt.Sprintf("%s_%d", oldName, i)
+			if _, ok := s.types[t.Name]; !ok {
+				wasRenamed = true
+				for _i := range t.EnumVariants {
+					if strings.HasPrefix(t.EnumVariants[_i].Name, oldName) {
+						oldVariantSuffix := t.EnumVariants[_i].Name[len(oldName):]
+						t.EnumVariants[_i].Name = t.Name + oldVariantSuffix
+					}
+				}
+				break
+			}
+		}
+		if !wasRenamed {
+			t.Name = oldName
+			return errors.Errorf("reference %q type name conflict (tried also with _0..1000 as suffix): %q", key, t.Name)
+		}
 	}
 
 	s.refs[key] = t

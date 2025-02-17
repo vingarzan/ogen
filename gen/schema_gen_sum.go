@@ -761,11 +761,14 @@ func mergeSchemes(s1, s2 *jsonschema.Schema) (_ *jsonschema.Schema, err error) {
 	{
 		r.MaxLength = someU64(s1.MaxLength, s2.MaxLength, selectMinU64)
 		r.MinLength = someU64(s1.MinLength, s2.MinLength, selectMaxU64)
-		r.Pattern, err = someStr(s1.Pattern, s2.Pattern, func(s1, s2 string) (string, error) {
-			if s1 == s2 {
-				return s1, nil
+		r.Pattern, err = someStr(s1.Pattern, s2.Pattern, func(p1, p2 string) (string, error) {
+			if p1 == p2 {
+				return p1, nil
 			}
-			return "", errors.Errorf("cannot merge different patterns: %q and %q", s1, s2)
+			return "", errors.Wrapf(
+				errors.Errorf("cannot merge different patterns: %q and %q", p1, p2),
+				"%s + %s", s1.Ref.String(), s2.Ref.String(),
+			)
 		})
 		if err != nil {
 			return nil, errors.Wrap(err, "pattern")
