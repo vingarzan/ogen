@@ -260,9 +260,10 @@ func (g *schemaGen) generate2(name string, schema *jsonschema.Schema) (ret *ir.T
 			jsonschema.Boolean,
 			jsonschema.Null:
 		default:
-			return nil, &ErrNotImplemented{
-				Name: "non-primitive enum",
-			}
+			return nil, errors.Wrap(
+				&ErrNotImplemented{Name: "non-primitive enum"},
+				name,
+			)
 		}
 	}
 
