@@ -308,7 +308,7 @@ func (g *Generator) generateContents(
 			}
 
 			switch encoding {
-			case ir.EncodingJSON, ir.EncodingProblemJSON:
+			case ir.EncodingJSON, ir.EncodingProblemJSON, ir.EncodingMergePatchJSON:
 				t, err := g.generateSchema(ctx, typeName, media.Schema, optional, nil)
 				if err != nil {
 					return errors.Wrap(err, "generate schema")
