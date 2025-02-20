@@ -99,7 +99,7 @@ func NewGenerator(spec *ogen.Spec, opts Options) (*Generator, error) {
 		operations:    nil,
 		webhooks:      nil,
 		securities:    map[string]*ir.Security{},
-		tstorage:      newTStorage(),
+		tstorage:      newTStorage(opts.Logger),
 		errType:       nil,
 		webhookRouter: WebhookRouter{},
 		router:        Router{},
@@ -161,7 +161,7 @@ func (g *Generator) makeOps(ops []*openapi.Operation) error {
 
 		ctx := &genctx{
 			global: g.tstorage,
-			local:  newTStorage(),
+			local:  newTStorage(g.log),
 		}
 
 		op, err := g.generateOperation(ctx, "", spec)
@@ -242,7 +242,7 @@ func (g *Generator) makeWebhooks(webhooks []openapi.Webhook) error {
 
 			ctx := &genctx{
 				global: g.tstorage,
-				local:  newTStorage(),
+				local:  newTStorage(g.log),
 			}
 
 			op, err := g.generateOperation(ctx, w.Name, spec)

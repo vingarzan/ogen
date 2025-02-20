@@ -16,6 +16,7 @@ import (
 type Validators struct {
 	String validate.String
 	Int    validate.Int
+	Uint   validate.Uint
 	Float  validate.Float
 	Array  validate.Array
 	Object validate.Object
@@ -44,32 +45,62 @@ func (v *Validators) SetString(schema *jsonschema.Schema) (err error) {
 }
 
 func (v *Validators) SetInt(schema *jsonschema.Schema) error {
-	if num := jx.Num(schema.MultipleOf); len(num) > 0 {
-		val, err := num.Uint64()
-		if err != nil {
-			return errors.Wrap(err, "set multipleOf")
+	if (len(schema.Maximum) > 0 && schema.Maximum[0] == '-') ||
+		(len(schema.Minimum) > 0 && schema.Minimum[0] == '-') {
+		if num := jx.Num(schema.MultipleOf); len(num) > 0 {
+			val, err := num.Uint64()
+			if err != nil {
+				return errors.Wrap(err, "set multipleOf")
+			}
+			v.Int.SetMultipleOf(val)
 		}
-		v.Int.SetMultipleOf(val)
-	}
-	set := func(num jx.Num, f func(int64)) error {
-		if len(num) < 1 {
+		set := func(num jx.Num, f func(int64)) error {
+			if len(num) < 1 {
+				return nil
+			}
+			val, err := num.Int64()
+			if err != nil {
+				return err
+			}
+			f(val)
 			return nil
 		}
-		val, err := num.Int64()
-		if err != nil {
-			return err
+		if err := set(jx.Num(schema.Maximum), v.Int.SetMaximum); err != nil {
+			return errors.Wrap(err, "set maximum")
 		}
-		f(val)
-		return nil
+		if err := set(jx.Num(schema.Minimum), v.Int.SetMinimum); err != nil {
+			return errors.Wrap(err, "set minimum")
+		}
+		v.Int.MaxExclusive = schema.ExclusiveMaximum
+		v.Int.MinExclusive = schema.ExclusiveMinimum
+	} else {
+		if num := jx.Num(schema.MultipleOf); len(num) > 0 {
+			val, err := num.Uint64()
+			if err != nil {
+				return errors.Wrap(err, "set multipleOf")
+			}
+			v.Uint.SetMultipleOf(val)
+		}
+		set := func(num jx.Num, f func(uint64)) error {
+			if len(num) < 1 {
+				return nil
+			}
+			val, err := num.Uint64()
+			if err != nil {
+				return err
+			}
+			f(val)
+			return nil
+		}
+		if err := set(jx.Num(schema.Maximum), v.Uint.SetMaximum); err != nil {
+			return errors.Wrap(err, "set maximum")
+		}
+		if err := set(jx.Num(schema.Minimum), v.Uint.SetMinimum); err != nil {
+			return errors.Wrap(err, "set minimum")
+		}
+		v.Uint.MaxExclusive = schema.ExclusiveMaximum
+		v.Uint.MinExclusive = schema.ExclusiveMinimum
 	}
-	if err := set(jx.Num(schema.Maximum), v.Int.SetMaximum); err != nil {
-		return errors.Wrap(err, "set maximum")
-	}
-	if err := set(jx.Num(schema.Minimum), v.Int.SetMinimum); err != nil {
-		return errors.Wrap(err, "set minimum")
-	}
-	v.Int.MaxExclusive = schema.ExclusiveMaximum
-	v.Int.MinExclusive = schema.ExclusiveMinimum
 	return nil
 }
 
@@ -145,8 +176,13 @@ func (t *Type) needValidation(path *walkpath) (result bool) {
 			// NaN, Inf, float validators.
 			return true
 		}
-		if t.IsNumeric() && t.Validators.Int.Set() {
-			return true
+		if t.IsNumeric() {
+			if t.Validators.Int.Set() {
+				return true
+			}
+			if t.Validators.Uint.Set() {
+				return true
+			}
 		}
 		if t.Validators.String.Set() {
 			switch t.Primitive {

@@ -205,7 +205,7 @@ func (g *schemaGen) anyOf(name string, schema *jsonschema.Schema, side bool) (*i
 			case ir.KindPrimitive, ir.KindEnum:
 				switch {
 				case v.IsInteger():
-					if !v.Validators.Int.Set() {
+					if !v.Validators.Int.Set() && !v.Validators.Uint.Set() {
 						if err := v.Validators.SetInt(schema); err != nil {
 							return nil, errors.Wrap(err, "int validator")
 						}

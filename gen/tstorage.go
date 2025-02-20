@@ -8,6 +8,7 @@ import (
 	"github.com/ogen-go/ogen/gen/ir"
 	"github.com/ogen-go/ogen/internal/xmaps"
 	"github.com/ogen-go/ogen/jsonschema"
+	"go.uber.org/zap"
 )
 
 type schemaKey struct {
@@ -50,15 +51,18 @@ type tstorage struct {
 	//  * [T]Headers
 	//  * [T]StatusCodeWithHeaders
 	wtypes map[[2]jsonschema.Ref]*ir.Type // Key: parent ref + ref
+
+	log *zap.Logger
 }
 
-func newTStorage() *tstorage {
+func newTStorage(log *zap.Logger) *tstorage {
 	return &tstorage{
 		refs:       map[schemaKey]*ir.Type{},
 		types:      map[string]*ir.Type{},
 		responses:  map[jsonschema.Ref]*ir.Response{},
 		parameters: map[jsonschema.Ref]*ir.Parameter{},
 		wtypes:     map[[2]jsonschema.Ref]*ir.Type{},
+		log:        log,
 	}
 }
 
@@ -94,7 +98,9 @@ func (s *tstorage) saveType(t *ir.Type) error {
 }
 
 func (s *tstorage) checkNameAndRename(key schemaKey, t *ir.Type) (err error) {
-	if _, ok := s.types[t.Name]; !ok {
+	var another *ir.Type
+	var ok bool
+	if another, ok = s.types[t.Name]; !ok {
 		return nil
 	}
 
@@ -108,6 +114,16 @@ func (s *tstorage) checkNameAndRename(key schemaKey, t *ir.Type) (err error) {
 					oldVariantSuffix := t.EnumVariants[_i].Name[len(oldName):]
 					t.EnumVariants[_i].Name = t.Name + oldVariantSuffix
 				}
+			}
+			s.log.Info("Renamed type",
+				zap.String("old", oldName),
+				zap.String("new", t.Name),
+			)
+			if t.Schema != nil {
+				s.log.Debug("  - Schema of the renamed type", zap.String("schema", t.Schema.Ref.String()))
+			}
+			if another.Schema != nil {
+				s.log.Debug("  - Schema of the existing type", zap.String("schema", another.Schema.Ref.String()))
 			}
 			return nil
 		}
@@ -222,6 +238,10 @@ func (s *tstorage) merge(other *tstorage) error {
 					t.Implement(iface)
 				}
 			} else {
+				s.log.Error("Type name conflict",
+					zap.String("other.type", fmt.Sprintf("%+v %+v", t, t.GenericOf)),
+					zap.String("conflict.type", fmt.Sprintf("%+v %+v", confT, confT.GenericOf)),
+				)
 				return errors.Errorf("anonymous type name conflict: %q", name)
 			}
 		}

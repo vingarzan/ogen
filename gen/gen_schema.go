@@ -139,8 +139,8 @@ func GenerateSchema(schema *jsonschema.Schema, fs FileSystem, opts GenerateSchem
 	opts.setDefaults()
 
 	ctx := &genctx{
-		global: newTStorage(),
-		local:  newTStorage(),
+		global: newTStorage(opts.Logger),
+		local:  newTStorage(opts.Logger),
 	}
 
 	// TODO(tdakkota): pass input filename

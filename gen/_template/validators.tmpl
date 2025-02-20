@@ -115,6 +115,23 @@
 		}
 	{{- end }}
 
+	{{- if $va.Uint.Set }}
+		{{- $validated = true }}
+		{{- $v := $va.Uint }}
+		if err := (validate.Uint{
+			MinSet:       {{ $v.MinSet }},
+			Min:          {{ $v.Min }},
+			MaxSet:       {{ $v.MaxSet }},
+			Max:          {{ $v.Max }},
+			MinExclusive: {{ $v.MinExclusive }},
+			MaxExclusive: {{ $v.MaxExclusive }},
+			MultipleOfSet:{{ $v.MultipleOfSet }},
+			MultipleOf:   {{ $v.MultipleOf }},
+		}).Validate(uint64({{ $.Var }})); err != nil {
+			return errors.Wrap(err, "int")
+		}
+	{{- end }}
+
     {{- if $t.IsFloat }}
     	{{- $validated = true }}
 		{{- $v := $va.Float }}
