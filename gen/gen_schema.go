@@ -9,6 +9,7 @@ import (
 
 	"github.com/ogen-go/ogen/gen/ir"
 	"github.com/ogen-go/ogen/internal/xmaps"
+	"github.com/ogen-go/ogen/jsonpointer"
 	"github.com/ogen-go/ogen/jsonschema"
 )
 
@@ -19,7 +20,14 @@ func saveSchemaTypes(ctx *genctx, gen *schemaGen, refEncoding map[jsonschema.Ref
 		}
 	}
 
-	for ref, t := range gen.localRefs {
+	// Sort the localRefs so that the naming will be deterministic.
+	keys := xmaps.SortedKeysFunc(gen.localRefs, func(i, j jsonpointer.RefKey) int {
+		return strings.Compare(i.String(), j.String())
+	})
+
+	for _, ref := range keys {
+		t := gen.localRefs[ref]
+		// gen.log.Debug("saving", zap.String("ref", ref.String()))
 		encoding := ir.EncodingJSON
 		if e, ok := refEncoding[ref]; ok {
 			encoding = e
@@ -46,6 +54,7 @@ func (g *Generator) generateSchema(
 ) (_ *ir.Type, rerr error) {
 	defer handleSchemaDepth(schema, &rerr)
 
+	g.log.Debug("generateSchema", zap.String("name", name), zap.String("ref", schema.Ref.String()))
 	lookup := func(ref jsonschema.Ref) (*ir.Type, bool) {
 		encoding := ir.EncodingJSON
 		if o := override; o != nil {

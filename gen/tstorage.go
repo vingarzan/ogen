@@ -6,12 +6,17 @@ import (
 
 	"github.com/go-faster/errors"
 	"github.com/ogen-go/ogen/gen/ir"
+	"github.com/ogen-go/ogen/internal/xmaps"
 	"github.com/ogen-go/ogen/jsonschema"
 )
 
 type schemaKey struct {
 	jsonschema.Ref
 	ir.Encoding
+}
+
+func (s schemaKey) String() string {
+	return fmt.Sprintf("%s %s", s.Ref, s.Encoding)
 }
 
 // tstorage is a type storage.
@@ -183,8 +188,15 @@ func sameBase(t, tt *ir.Type) bool {
 }
 
 func (s *tstorage) merge(other *tstorage) error {
+
+	// Sort the other.refs to make the merge deterministic
+	keys := xmaps.SortedKeysFunc(other.refs, func(i, j schemaKey) int {
+		return strings.Compare(i.String(), j.String())
+	})
+
 	// Check for merge conflicts.
-	for ref, t := range other.refs {
+	for _, ref := range keys {
+		t := other.refs[ref]
 		if _, ok := s.refs[ref]; ok {
 			return errors.Errorf("reference conflict: %q", ref)
 		}
